@@ -1,4 +1,6 @@
-import tf from "@tensorflow/tfjs";
+import tf from "@tensorflow/tfjs-node";
+// import tf from "@tensorflow/tfjs";
+// import tf from "@tensorflow/tfjs-node";
 import fs from "fs/promises";
 import Mayer from "./metricas.js";
 // Dados fictícios para treinamento
@@ -41,8 +43,9 @@ async function main() {
   const model = tf.sequential();
   model.add(tf.layers.dense({ units: 1, inputShape: [2] }));
   model.compile({
-    optimizer: tf.train.adam(1),
+    optimizer: tf.train.adam(20),
     loss: tf.losses.meanSquaredError,
+    metrics: ["accuracy"],
   });
 
   // Treina o modelo
@@ -52,7 +55,7 @@ async function main() {
   console.log("Treinamento finalizado!");
   console.timeEnd("Treinando");
   // Testa o modelo
-  const testData = [{ ma: 1.16, fg: 51 }];
+  const testData = [{ ma: 1.18, fg: 51 }];
   const testTensor = tf.tensor2d(testData.map((data) => [data.ma, data.fg]));
   const result = await model.predict(testTensor).array();
   console.log(
