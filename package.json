@@ -1,0 +1,12 @@
+{
+  "name": "tensorflow-bitcoin",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@tensorflow/tfjs": "^4.2.0",
+    "axios": "^1.2.6",
+    "moment": "^2.29.4"
+  }
+}
