@@ -1,17 +1,9 @@
-import tf from "@tensorflow/tfjs-node";
-// import tf from "@tensorflow/tfjs";
-// import tf from "@tensorflow/tfjs-node";
-import fs from "fs/promises";
 import Mayer from "./metricas.js";
-// Dados fictícios para treinamento
-// ma= multiplo mayer
-// fg = fear and greed index
-// price = preço do bitcoin
 
-// Prepara os dados para treinamento
+import fearGreed from "./fearAndGreedDataset.js";
+import price from "./priceDataset.js";
+
 async function main() {
-  const fearGreed = JSON.parse(await fs.readFile("FearAndGreedDataset.json"));
-  const price = JSON.parse(await fs.readFile("PriceDataset.json"));
   const mayerIndex = price.map((item, index, prices) => {
     if (index < 200) return 1;
     const pricesUntilDate = prices.slice(0, index);
@@ -33,33 +25,17 @@ async function main() {
       price: priceValue.priceUSD,
     });
   }
+  const TfDataset = tf.data.array(trainingData);
 
-  const inputTensor = tf.tensor2d(
-    trainingData.map((data) => [data.ma, data.fg])
-  );
-  const outputTensor = tf.tensor2d(trainingData.map((data) => [data.price]));
+  const points = await TfDataset.map((item) => ({
+    x: item.fg,
+    y: item.price,
+  })).toArray();
 
-  // Define o modelo
-  const model = tf.sequential();
-  model.add(tf.layers.dense({ units: 1, inputShape: [2] }));
-  model.compile({
-    optimizer: tf.train.adam(20),
-    loss: tf.losses.meanSquaredError,
-    metrics: ["accuracy"],
-  });
-
-  // Treina o modelo
-  console.time("Treinando");
-  console.timeLog("Treinando");
-  await model.fit(inputTensor, outputTensor, { epochs: 1000 });
-  console.log("Treinamento finalizado!");
-  console.timeEnd("Treinando");
-  // Testa o modelo
-  const testData = [{ ma: 1.18, fg: 51 }];
-  const testTensor = tf.tensor2d(testData.map((data) => [data.ma, data.fg]));
-  const result = await model.predict(testTensor).array();
-  console.log(
-    `Preço previsto do Bitcoin: ${parseFloat(result[0][0].toFixed(2))}`
+  tfvis.render.scatterplot(
+    { name: "Teste" },
+    { values: [points], series: ["original"] },
+    { xLabel: "Medo e Ganancia", yLabel: "Preço" }
   );
 }
 main();

@@ -68,8 +68,3 @@ export default class Mayer {
     return Mayer.movingAverage(prices, 200).pop();
   }
 }
-
-// /**
-//  * @type {Mayer}
-//  */
-// module.exports = Mayer;

@@ -4,10 +4,14 @@
   "main": "index.js",
   "license": "MIT",
   "type": "module",
+  "scripts": {
+    "dev": "node index-node.js"
+  },
   "dependencies": {
     "@tensorflow/tfjs": "^4.2.0",
     "@tensorflow/tfjs-node": "^4.2.0",
     "@tensorflow/tfjs-node-gpu": "^4.2.0",
+    "@tensorflow/tfjs-vis": "^1.5.1",
     "axios": "^1.2.6",
     "moment": "^2.29.4"
   }
