@@ -1,4 +1,4 @@
-import tf from "@tensorflow/tfjs-node";
+import tf, { Tensor } from "@tensorflow/tfjs";
 // import tf from "@tensorflow/tfjs";
 // import tf from "@tensorflow/tfjs-node";
 import fs from "fs/promises";
@@ -33,8 +33,7 @@ async function main() {
       price: priceValue.priceUSD,
     });
   }
-  const TfDataset = tf.data.array(trainingData);
-  const points = TfDataset.map((item) => ({ x: item.fg, y: item.price }));
+  tf.util.shuffle(trainingData);
 
   const inputTensor = tf.tensor2d(
     trainingData.map((data) => [data.ma, data.fg]),
@@ -44,12 +43,32 @@ async function main() {
     trainingData.map((data) => [data.price]),
     [trainingData.length, 1] // Numero de itens , numero de variaveis (1 y)
   );
+  // Normalise with min max normaliser
+  const normalizedInput = await normalise(inputTensor);
+  const normalizedOutput = await normalise(outputTensor);
+  // 70 / 30 separation
+  const separation_70_30 = [
+    Math.round(normalizedOutput.normalizedTensor.shape[0] * 0.7),
+    trainingData.length -
+      Math.round(normalizedOutput.normalizedTensor.shape[0] * 0.7),
+  ];
 
+  const [trainingInputData, testingInputData] = tf.split(
+    normalizedInput.normalizedTensor,
+    separation_70_30
+  );
+  const [trainingOutputData, testingOutputData] = tf.split(
+    normalizedOutput.normalizedTensor,
+    separation_70_30
+  );
   // Define o modelo
   const model = tf.sequential();
+  // units = quantidade de neuronios
   model.add(tf.layers.dense({ units: 1, inputShape: [2] }));
+  model.summary();
+
   model.compile({
-    optimizer: tf.train.adam(20),
+    optimizer: tf.train.adam(0.01),
     loss: tf.losses.meanSquaredError,
     metrics: ["accuracy"],
   });
@@ -57,15 +76,55 @@ async function main() {
   // Treina o modelo
   console.time("Treinando");
   console.timeLog("Treinando");
-  await model.fit(inputTensor, outputTensor, { epochs: 1000 });
+  const training = await model.fit(trainingInputData, trainingOutputData, {
+    epochs: 1000,
+    validationSplit: 0.2, //20% para validação
+    callbacks: {
+      // Opcional
+      onEpochEnd: (epoch, { loss, acc }) =>
+        console.log(`Epoch: ${epoch}, Loss: ${loss}, ACC: ${acc}`),
+    },
+  });
+  const lastTrainingLoss = training.history.loss.pop();
+  const lastTrainingValLoss = training.history.val_loss.pop();
+  const [lossTensor] = await model.evaluate(
+    testingInputData,
+    testingOutputData
+  );
+  const loss = await lossTensor.dataSync();
   console.log("Treinamento finalizado!");
   console.timeEnd("Treinando");
-  // Testa o modelo
-  const testData = [{ ma: 1.18, fg: 51 }];
-  const testTensor = tf.tensor2d(testData.map((data) => [data.ma, data.fg]));
-  const result = await model.predict(testTensor).array();
+
   console.log(
-    `Preço previsto do Bitcoin: ${parseFloat(result[0][0].toFixed(2))}`
+    `Training Loss: ${lastTrainingLoss}, ValLoss: ${lastTrainingValLoss} Testing Loss: ${loss}\nModelo ${
+      lastTrainingLoss > loss ? "Bom" : "Ruim"
+    }`
   );
+
+  // const testTensor = tf.tensor2d(testData.map((data) => [data.ma, data.fg]));
+  // const result = await model.predict(testTensor).array();
+  // console.log(
+  //   `Preço previsto do Bitcoin: ${parseFloat(result[0][0].toFixed(2))}`
+  // );
+}
+/**
+ *
+ * @param {Tensor} tensor
+ */
+async function normalise(tensor) {
+  const min = tensor.min();
+  const max = tensor.max();
+  const normalizedTensor = tensor.sub(min).div(max.sub(min));
+  return { normalizedTensor, min, max };
+}
+/**
+ *
+ * @param {Tensor} tensor
+ * @param {Tensor} min
+ * @param {Tensor} max
+ */
+async function denormalize(tensor, min, max) {
+  const denormalizedTensor = tensor.mul(max.sub(min)).add(min);
+  return denormalizedTensor;
 }
 main();
